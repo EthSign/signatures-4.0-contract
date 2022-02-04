@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/metatx/ERC2771ContextUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
 
 contract EthSignCommonFramework is ERC2771ContextUpgradeable {
     uint256 public chainId;
@@ -14,25 +13,6 @@ contract EthSignCommonFramework is ERC2771ContextUpgradeable {
     {
         chainId = chainId_;
         __ERC2771Context_init(forwarder);
-    }
-
-    /**
-     * @dev Verifies if a given ECDSA signature is authentic.
-     * @param signer The signer's address.
-     * @param hash The signed data, usually a hash.
-     * @param signature The raw ECDSA signature.
-     */
-    function verifyECSignatureSigner(
-        address signer,
-        bytes32 hash,
-        bytes calldata signature
-    ) public view returns (bool) {
-        return
-            SignatureCheckerUpgradeable.isValidSignatureNow(
-                signer,
-                ECDSAUpgradeable.toEthSignedMessageHash(hash),
-                signature
-            );
     }
 
     /**
