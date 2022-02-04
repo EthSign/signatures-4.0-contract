@@ -65,24 +65,29 @@ contract EthSignV4 is EthSignCommonFramework {
         uint32 expiry_,
         bytes32 rawDataHash_,
         bytes32 ipfsCIDv0_,
+        uint8[] calldata signersPerStep,
         address[] calldata signers,
-        uint8[] calldata signersPerStep
+        uint168[] calldata signersData
     ) external {
         bytes32 contractId = keccak256(abi.encode(chainId, ipfsCIDv0_));
         Contract storage c = _contractMapping[contractId];
         require(c.ipfsCIDv0 == 0, "Contract exists");
         require(expiry_ > block.timestamp, "Invalid expiry");
-        uint168[] memory temp = new uint168[](signers.length);
+        require(signers.length == signersData.length, "Arrays mismatch 0");
         for (uint256 i = 0; i < signers.length; ++i) {
-            temp[i] = uint168(uint160(signers[i])) << 8;
             emit SignerAdded(contractId, signers[i]);
         }
+        uint256 totalSigners = 0;
+        for (uint256 j = 0; j < signers.length; ++j) {
+            totalSigners += signersPerStep[j];
+        }
+        require(totalSigners == signers.length, "Arrays mismatch 1");
         c.strictMode = strictMode_;
         c.expiry = expiry_;
         c.rawDataHash = rawDataHash_;
         c.ipfsCIDv0 = ipfsCIDv0_;
         c.signersLeftPerStep = signersPerStep;
-        c.packedSignersAndStatus = temp;
+        c.packedSignersAndStatus = signersData;
     }
 
     function sign(
