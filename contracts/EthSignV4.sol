@@ -29,15 +29,15 @@ contract EthSignV4 is EthSignCommonFramework {
     bytes32 private constant _SALT =
         0xad27b301e5f37100ff157cc76d31929cff6e67812684f9f8bc3d7f70865dd810; // keccak256("EthSignV4");
     bytes32 private constant _EIP712_DOMAIN_TYPE_HASH =
-        0xba3bbab4b37e6e20d315843d8bced25060386a557eeb60eefdbb4096f6ad6923; // keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract,bytes32 salt)");
+        0xd87cd6ef79d4e2b95e15ce8abf732db51ec771f1ca2edccf22a46c729ac56472; // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)");
     bytes32 private constant _STRUCT_TYPE_HASH =
-        0x8165517356929917aaedab33f6f3c5e0284dcaec7dcf7dcceaaf1ed3be764cd4; // keccak256("Contract(uint32 expiry, bytes32 rawDataHash)");
+        0x14bd91134e3467a07c38fd0cbaa1e572cbf6bab435886649b8818f6754865054; // keccak256("Contract(bytes32 contractId,bytes32 rawDataHash)");
     // solhint-disable var-name-mixedcase
     bytes32 private _DOMAIN_SEPARATOR;
 
     mapping(bytes32 => Contract) internal _contractMapping;
 
-    event SignerAdded(bytes32 contractId, address signer);
+    event SignersAdded(bytes32 contractId, address[] signers);
     event SignerSigned(bytes32 contractId, address signer, bytes32 ipfsCIDv0);
     event ContractSigningCompleted(bytes32 contractId);
     event ContractHidden(bytes32 contractId, address party);
@@ -52,6 +52,7 @@ contract EthSignV4 is EthSignCommonFramework {
             abi.encode(
                 _EIP712_DOMAIN_TYPE_HASH,
                 0x60570743c3aa81622759289f024257add09e8c4aa0cf1732651de4dd5231d716, // keccak256("EthSign")
+                0x13600b294191fc92924bb3ce4b969c1e7e2bab8f4c93c3fc6d0a51733df3c060, // keccak256("4")
                 chainId,
                 this,
                 _SALT
@@ -74,9 +75,7 @@ contract EthSignV4 is EthSignCommonFramework {
         require(c.ipfsCIDv0 == 0, "Contract exists");
         require(expiry_ > block.timestamp || expiry_ == 0, "Invalid expiry");
         require(signers.length == signersData.length, "Arrays mismatch 0");
-        for (uint256 i = 0; i < signers.length; ++i) {
-            emit SignerAdded(contractId, signers[i]);
-        }
+        emit SignersAdded(contractId, signers);
         uint256 totalSigners = 0;
         for (uint256 j = 0; j < signersPerStep.length; ++j) {
             totalSigners += signersPerStep[j];
@@ -100,7 +99,10 @@ contract EthSignV4 is EthSignCommonFramework {
         require(
             SignatureCheckerUpgradeable.isValidSignatureNow(
                 _msgSender(),
-                _hashStruct(c.expiry, c.rawDataHash),
+                ECDSAUpgradeable.toTypedDataHash(
+                    _DOMAIN_SEPARATOR,
+                    _hashStruct(contractId, c.rawDataHash)
+                ),
                 signature
             ),
             "Invalid signature"
@@ -116,7 +118,7 @@ contract EthSignV4 is EthSignCommonFramework {
             "Already signed"
         );
         require(
-            step == 0 || c.signersLeftPerStep[step - 1] == 0,
+            step == 1 || c.signersLeftPerStep[step - 1] == 0,
             "Not your turn"
         );
         require(c.expiry == 0 || c.expiry > block.timestamp, "Expired");
@@ -126,7 +128,7 @@ contract EthSignV4 is EthSignCommonFramework {
         emit SignerSigned(contractId, _msgSender(), ipfsCIDv0_);
         if (
             c.signersLeftPerStep[step] == 0 &&
-            step == c.signersLeftPerStep.length - 1
+            step == c.signersLeftPerStep.length
         ) emit ContractSigningCompleted(contractId);
     }
 
@@ -167,20 +169,12 @@ contract EthSignV4 is EthSignCommonFramework {
         hasSigned = uint8(signerData & STATUS_BITMASK);
     }
 
-    function _hashStruct(uint32 expiry, bytes32 rawDataHash)
+    function _hashStruct(bytes32 contractId, bytes32 rawDataHash)
         internal
-        view
+        pure
         returns (bytes32)
     {
         return
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    _DOMAIN_SEPARATOR,
-                    keccak256(
-                        abi.encode(_STRUCT_TYPE_HASH, expiry, rawDataHash)
-                    )
-                )
-            );
+            keccak256(abi.encode(_STRUCT_TYPE_HASH, contractId, rawDataHash));
     }
 }

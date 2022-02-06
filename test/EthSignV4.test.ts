@@ -23,14 +23,15 @@ const chainId = hre.network.config.chainId ?? 1337
 
 const EIP712_CONSTANTS = {
     DOMAIN_DATA: {
-        name: 'EthSignV4',
+        name: 'EthSign',
+        version: '4',
         chainId: chainId,
         verifyingContract: '',
         salt: '0xad27b301e5f37100ff157cc76d31929cff6e67812684f9f8bc3d7f70865dd810'
     },
     STRUCT_TYPES: {
         Contract: [
-            {name: 'expiry', type: 'uint32'},
+            {name: 'contractId', type: 'bytes32'},
             {name: 'rawDataHash', type: 'bytes32'}
         ]
     }
@@ -128,14 +129,8 @@ describe('EthSignV4', () => {
                 )
             await successfulResolvedTransaction(createTx)
             void expect(createTx)
-                .to.emit(contract, 'SignerAdded')
-                .withArgs(contractId, signerAddresses[0])
-            void expect(createTx)
-                .to.emit(contract, 'SignerAdded')
-                .withArgs(contractId, signerAddresses[1])
-            void expect(createTx)
-                .to.emit(contract, 'SignerAdded')
-                .withArgs(contractId, signerAddresses[2])
+                .to.emit(contract, 'SignersAdded')
+                .withArgs(contractId, signerAddresses)
             // Verify struct
             const contractStruct = await contract.getContract(contractId)
             expect(contractStruct.strictMode).equals(true)
@@ -158,6 +153,22 @@ describe('EthSignV4', () => {
                 })
             )
             // Sign
+            const ipfsCid_ = getBytes32FromIpfsCidV0(
+                'QmbWqxBEKC3P8tqsKc98xmWNzrzDtRLMiMPL8wBuTGsMnR'
+            )
+            const message = {contractId: contractId, rawDataHash: rawDataHash}
+            const s0Signature = await s0._signTypedData(
+                EIP712_CONSTANTS.DOMAIN_DATA,
+                EIP712_CONSTANTS.STRUCT_TYPES,
+                message
+            )
+            const signTx = await contract
+                .connect(s0)
+                .sign(contractId, 0, ipfsCid_, s0Signature)
+            await successfulResolvedTransaction(signTx)
+            void expect(signTx)
+                .to.emit(contract, 'SignerSigned')
+                .withArgs(contractId, s0.address, ipfsCid_)
         })
     })
 })
