@@ -20,3 +20,14 @@ export async function successfulTransaction(
 
     return receipt
 }
+
+export async function successfulResolvedTransaction(
+    transaction: ContractTransaction
+): Promise<ContractReceipt> {
+    const receipt = await transaction.wait()
+
+    expect(receipt).is.not.undefined
+    expect(receipt.status).equals(SUCCESS)
+
+    return receipt
+}

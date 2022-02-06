@@ -1,5 +1,5 @@
 // Start - Support direct Mocha run & debug
-import 'hardhat'
+import hre from 'hardhat'
 import '@nomiclabs/hardhat-ethers'
 // End - Support direct Mocha run & debug
 
@@ -9,7 +9,7 @@ import {solidity} from 'ethereum-waffle'
 import {deployContractWithProxy, signer} from './framework/contracts'
 import {EthSignV4} from '../typechain'
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers'
-import {successfulTransaction} from './framework/transaction'
+import {successfulResolvedTransaction} from './framework/transaction'
 import BigNum from 'bignum'
 import {ethers} from 'ethers'
 import {
@@ -19,22 +19,45 @@ import {
 
 chai.use(solidity)
 
+const chainId = hre.network.config.chainId ?? 1337
+
+const EIP712_CONSTANTS = {
+    DOMAIN_DATA: {
+        name: 'EthSignV4',
+        chainId: chainId,
+        verifyingContract: '',
+        salt: '0xad27b301e5f37100ff157cc76d31929cff6e67812684f9f8bc3d7f70865dd810'
+    },
+    STRUCT_TYPES: {
+        Contract: [
+            {name: 'expiry', type: 'uint32'},
+            {name: 'rawDataHash', type: 'bytes32'}
+        ]
+    }
+}
+
 describe('EthSignV4', () => {
     let contract: EthSignV4
     let s0: SignerWithAddress, s1: SignerWithAddress, s2: SignerWithAddress
+    let signerAddresses: string[]
 
     before(async () => {
         s0 = await signer(0)
         s1 = await signer(1)
         s2 = await signer(2)
+        signerAddresses = []
+        signerAddresses.push(s0.address)
+        signerAddresses.push(s1.address)
+        signerAddresses.push(s2.address)
     })
 
     beforeEach(async () => {
         contract = await deployContractWithProxy<EthSignV4>(
             'EthSignV4',
-            1337,
+            chainId,
             '0x0000000000000000000000000000000000000000'
         )
+        EIP712_CONSTANTS.DOMAIN_DATA.verifyingContract = contract.address
     })
 
     describe('encode & decode test', () => {
@@ -64,30 +87,77 @@ describe('EthSignV4', () => {
         const rawDataHash = ethers.utils.hashMessage('some data')
         const ipfsCid = 'QmNSUYVKDSvPUnRLKmuxk9diJ6yS96r1TrAXzjTiBcCLAL'
         const ipfsCidBytes32 = getBytes32FromIpfsCidV0(ipfsCid)
-        const signers = [s0.address, s1.address, s2.address]
         const signerStep = [1, 1, 2]
         const signersPerStep = [2, 1]
-        let signersData: [ethers.BigNumber]
+        const signersData: ethers.BigNumber[] = []
 
-        it('w/ strict mode, w/ no expiry', async () => {
-            for (let i = 0; i < signers.length; ++i) {
+        before(async () => {
+            for (let i = 0; i < signerAddresses.length; ++i) {
                 signersData.push(
-                    await contract.encodeSignerData(signers[i], signerStep[i])
+                    await contract.encodeSignerData(
+                        signerAddresses[i],
+                        signerStep[i]
+                    )
                 )
             }
-            const connectReceipt = await successfulTransaction(
-                contract
-                    .connect(s0)
-                    .create(
-                        true,
-                        0,
-                        rawDataHash,
-                        ipfsCidBytes32,
-                        signersPerStep,
-                        signers,
-                        signersData
-                    )
+        })
+
+        it('w/ strict mode, w/ no expiry', async () => {
+            const contractId = await contract
+                .connect(s0)
+                .callStatic.create(
+                    true,
+                    0,
+                    rawDataHash,
+                    ipfsCidBytes32,
+                    signersPerStep,
+                    signerAddresses,
+                    signersData
+                )
+            // Create
+            const createTx = await contract
+                .connect(s0)
+                .create(
+                    true,
+                    0,
+                    rawDataHash,
+                    ipfsCidBytes32,
+                    signersPerStep,
+                    signerAddresses,
+                    signersData
+                )
+            await successfulResolvedTransaction(createTx)
+            void expect(createTx)
+                .to.emit(contract, 'SignerAdded')
+                .withArgs(contractId, signerAddresses[0])
+            void expect(createTx)
+                .to.emit(contract, 'SignerAdded')
+                .withArgs(contractId, signerAddresses[1])
+            void expect(createTx)
+                .to.emit(contract, 'SignerAdded')
+                .withArgs(contractId, signerAddresses[2])
+            // Verify struct
+            const contractStruct = await contract.getContract(contractId)
+            expect(contractStruct.strictMode).equals(true)
+            expect(contractStruct.expiry).equals(0)
+            expect(contractStruct.rawDataHash).equals(rawDataHash)
+            expect(getIpfsCidV0FromBytes32(contractStruct.ipfsCIDv0)).equals(
+                ipfsCid
             )
+            expect(contractStruct.signersLeftPerStep).to.deep.equal(
+                signersPerStep
+            )
+            let i = 0
+            await Promise.all(
+                contractStruct.packedSignersAndStatus.map(async (v) => {
+                    const decodedValues = await contract.decodeSignerData(v)
+                    expect(decodedValues.signer).equals(signerAddresses[i])
+                    expect(decodedValues.step).equals(signerStep[i])
+                    expect(decodedValues.hasSigned).equals(0)
+                    ++i
+                })
+            )
+            // Sign
         })
     })
 })
