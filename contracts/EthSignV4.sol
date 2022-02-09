@@ -70,7 +70,15 @@ contract EthSignV4 is EthSignCommonFramework {
         address[] calldata signers,
         uint168[] calldata signersData
     ) external returns (bytes32 contractId) {
-        contractId = keccak256(abi.encode(chainId, ipfsCIDv0_));
+        contractId = keccak256(
+            abi.encode(
+                chainId,
+                expiry_,
+                ipfsCIDv0_,
+                signersPerStep,
+                signersData
+            )
+        );
         Contract storage c = _contractMapping[contractId];
         require(c.ipfsCIDv0 == 0, "Contract exists");
         require(expiry_ > block.timestamp || expiry_ == 0, "Invalid expiry");
@@ -118,16 +126,16 @@ contract EthSignV4 is EthSignCommonFramework {
             "Already signed"
         );
         require(
-            step == 1 || c.signersLeftPerStep[step - 1] == 0,
+            step == 1 || c.signersLeftPerStep[step - 2] == 0,
             "Not your turn"
         );
         require(c.expiry == 0 || c.expiry > block.timestamp, "Expired");
         c.packedSignersAndStatus[index] |= 0x1;
-        c.signersLeftPerStep[step] -= 1;
+        c.signersLeftPerStep[step - 1] -= 1;
         if (c.strictMode) c.ipfsCIDv0 = ipfsCIDv0_;
         emit SignerSigned(contractId, _msgSender(), ipfsCIDv0_);
         if (
-            c.signersLeftPerStep[step] == 0 &&
+            c.signersLeftPerStep[step - 1] == 0 &&
             step == c.signersLeftPerStep.length
         ) emit ContractSigningCompleted(contractId);
     }
