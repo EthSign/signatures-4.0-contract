@@ -6,10 +6,8 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerU
 
 contract EthSignV4 is EthSignCommonFramework {
     struct Contract {
-        bool strictMode;
         uint32 expiry;
         bytes32 rawDataHash;
-        bytes32 ipfsCIDv0;
         uint8[] signersLeftPerStep;
         uint168[] packedSignersAndStatus;
     }
@@ -37,8 +35,9 @@ contract EthSignV4 is EthSignCommonFramework {
 
     mapping(bytes32 => Contract) internal _contractMapping;
 
+    event ContractCreated(bytes32 contractId, string name, string arweaveTx);
     event SignersAdded(bytes32 contractId, address[] signers);
-    event SignerSigned(bytes32 contractId, address signer, bytes32 ipfsCIDv0);
+    event SignerSigned(bytes32 contractId, address signer, string arweaveTx);
     event ContractSigningCompleted(bytes32 contractId);
     event ContractHidden(bytes32 contractId, address party);
 
@@ -62,37 +61,30 @@ contract EthSignV4 is EthSignCommonFramework {
 
     // solhint-disable ordering
     function create(
-        bool strictMode_,
+        string calldata name,
         uint32 expiry_,
         bytes32 rawDataHash_,
-        bytes32 ipfsCIDv0_,
+        string calldata arweaveTx,
         uint8[] calldata signersPerStep,
         address[] calldata signers,
         uint168[] calldata signersData
     ) external returns (bytes32 contractId) {
         contractId = keccak256(
-            abi.encode(
-                chainId,
-                expiry_,
-                ipfsCIDv0_,
-                signersPerStep,
-                signersData
-            )
+            abi.encode(chainId, expiry_, signersPerStep, signersData)
         );
         Contract storage c = _contractMapping[contractId];
-        require(c.ipfsCIDv0 == 0, "Contract exists");
+        require(c.rawDataHash == 0, "Contract exists");
         require(expiry_ > block.timestamp || expiry_ == 0, "Invalid expiry");
         require(signers.length == signersData.length, "Arrays mismatch 0");
+        emit ContractCreated(contractId, name, arweaveTx);
         emit SignersAdded(contractId, signers);
         uint256 totalSigners = 0;
         for (uint256 j = 0; j < signersPerStep.length; ++j) {
             totalSigners += signersPerStep[j];
         }
         require(totalSigners == signers.length, "Arrays mismatch 1");
-        c.strictMode = strictMode_;
         c.expiry = expiry_;
         c.rawDataHash = rawDataHash_;
-        c.ipfsCIDv0 = ipfsCIDv0_;
         c.signersLeftPerStep = signersPerStep;
         c.packedSignersAndStatus = signersData;
     }
@@ -100,7 +92,7 @@ contract EthSignV4 is EthSignCommonFramework {
     function sign(
         bytes32 contractId,
         uint256 index,
-        bytes32 ipfsCIDv0_,
+        string calldata arweaveTx,
         bytes calldata signature
     ) external {
         Contract storage c = _contractMapping[contractId];
@@ -132,8 +124,7 @@ contract EthSignV4 is EthSignCommonFramework {
         require(c.expiry == 0 || c.expiry > block.timestamp, "Expired");
         c.packedSignersAndStatus[index] |= 0x1;
         c.signersLeftPerStep[step - 1] -= 1;
-        if (c.strictMode) c.ipfsCIDv0 = ipfsCIDv0_;
-        emit SignerSigned(contractId, _msgSender(), ipfsCIDv0_);
+        emit SignerSigned(contractId, _msgSender(), arweaveTx);
         if (
             c.signersLeftPerStep[step - 1] == 0 &&
             step == c.signersLeftPerStep.length
