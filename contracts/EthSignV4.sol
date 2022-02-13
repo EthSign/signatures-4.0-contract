@@ -35,9 +35,13 @@ contract EthSignV4 is EthSignCommonFramework {
 
     mapping(bytes32 => Contract) internal _contractMapping;
 
-    event ContractCreated(bytes32 contractId, string name, string arweaveTx);
-    event SignersAdded(bytes32 contractId, address[] signers);
-    event SignerSigned(bytes32 contractId, address signer, string arweaveTx);
+    event ContractCreated(bytes32 contractId, string name, address initiator);
+    event RecipientsAdded(
+        bytes32 contractId,
+        address[] signers,
+        address[] reviewers
+    );
+    event SignerSigned(bytes32 contractId, address signer);
     event ContractSigningCompleted(bytes32 contractId);
     event ContractHidden(bytes32 contractId, address party);
 
@@ -64,10 +68,10 @@ contract EthSignV4 is EthSignCommonFramework {
         string calldata name,
         uint32 expiry_,
         bytes32 rawDataHash_,
-        string calldata arweaveTx,
         uint8[] calldata signersPerStep,
         address[] calldata signers,
-        uint168[] calldata signersData
+        uint168[] calldata signersData,
+        address[] calldata reviewers
     ) external returns (bytes32 contractId) {
         contractId = keccak256(
             abi.encode(chainId, expiry_, signersPerStep, signersData)
@@ -76,8 +80,8 @@ contract EthSignV4 is EthSignCommonFramework {
         require(c.rawDataHash == 0, "Contract exists");
         require(expiry_ > block.timestamp || expiry_ == 0, "Invalid expiry");
         require(signers.length == signersData.length, "Arrays mismatch 0");
-        emit ContractCreated(contractId, name, arweaveTx);
-        emit SignersAdded(contractId, signers);
+        emit ContractCreated(contractId, name, _msgSender());
+        emit RecipientsAdded(contractId, signers, reviewers);
         uint256 totalSigners = 0;
         for (uint256 j = 0; j < signersPerStep.length; ++j) {
             totalSigners += signersPerStep[j];
@@ -92,7 +96,6 @@ contract EthSignV4 is EthSignCommonFramework {
     function sign(
         bytes32 contractId,
         uint256 index,
-        string calldata arweaveTx,
         bytes calldata signature
     ) external {
         Contract storage c = _contractMapping[contractId];
@@ -101,7 +104,7 @@ contract EthSignV4 is EthSignCommonFramework {
                 _msgSender(),
                 ECDSAUpgradeable.toTypedDataHash(
                     _DOMAIN_SEPARATOR,
-                    _hashStruct(contractId, c.rawDataHash)
+                    _hashSign(contractId, c.rawDataHash)
                 ),
                 signature
             ),
@@ -124,7 +127,7 @@ contract EthSignV4 is EthSignCommonFramework {
         require(c.expiry == 0 || c.expiry > block.timestamp, "Expired");
         c.packedSignersAndStatus[index] |= 0x1;
         c.signersLeftPerStep[step - 1] -= 1;
-        emit SignerSigned(contractId, _msgSender(), arweaveTx);
+        emit SignerSigned(contractId, _msgSender());
         if (
             c.signersLeftPerStep[step - 1] == 0 &&
             step == c.signersLeftPerStep.length
@@ -168,7 +171,7 @@ contract EthSignV4 is EthSignCommonFramework {
         hasSigned = uint8(signerData & STATUS_BITMASK);
     }
 
-    function _hashStruct(bytes32 contractId, bytes32 rawDataHash)
+    function _hashSign(bytes32 contractId, bytes32 rawDataHash)
         internal
         pure
         returns (bytes32)
