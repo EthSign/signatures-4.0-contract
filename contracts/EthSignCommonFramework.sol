@@ -23,14 +23,6 @@ contract EthSignCommonFramework is
         __Ownable_init_unchained();
     }
 
-    /**
-     * @dev Hashes the input string using `keccak256(abi.encodePacked())`.
-     * @param str Input string.
-     */
-    function hashString(string calldata str) public pure returns (bytes32) {
-        return keccak256(abi.encode(str));
-    }
-
     function _authorizeUpgrade(address newImplementation)
         internal
         override
@@ -47,6 +39,7 @@ contract EthSignCommonFramework is
         return super._msgSender();
     }
 
+    // slither-disable-next-line dead-code
     function _msgData()
         internal
         view
