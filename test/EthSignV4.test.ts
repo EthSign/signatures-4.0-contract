@@ -15,10 +15,6 @@ import {
 } from './framework/transaction'
 import BigNum from 'bignum'
 import {ethers} from 'ethers'
-import {
-    getBytes32FromIpfsCidV0,
-    getIpfsCidV0FromBytes32
-} from './framework/ipfs-bytes32'
 
 chai.use(solidity)
 
@@ -90,8 +86,6 @@ describe('EthSignV4', () => {
     describe('create and sign workflow', () => {
         const name = 'Some contract'
         const rawDataHash = ethers.utils.hashMessage('some data')
-        const ipfsCid = 'QmNSUYVKDSvPUnRLKmuxk9diJ6yS96r1TrAXzjTiBcCLAL'
-        const ipfsCidBytes32 = getBytes32FromIpfsCidV0(ipfsCid)
         const signerStep = [1, 1, 2]
         const signersPerStep = [2, 1]
         const signersData: ethers.BigNumber[] = []
@@ -153,9 +147,6 @@ describe('EthSignV4', () => {
                 })
             )
             // Sign - s0
-            const ipfsCid_ = getBytes32FromIpfsCidV0(
-                'QmbWqxBEKC3P8tqsKc98xmWNzrzDtRLMiMPL8wBuTGsMnR'
-            )
             const message = {contractId: contractId, rawDataHash: rawDataHash}
             const s0Signature = await s0._signTypedData(
                 EIP712_CONSTANTS.DOMAIN_DATA,
@@ -259,9 +250,6 @@ describe('EthSignV4', () => {
                         []
                     )
             ).to.be.revertedWith('Contract exists')
-            const ipfsCid_ = getBytes32FromIpfsCidV0(
-                'QmbWqxBEKC3P8tqsKc98xmWNzrzDtRLMiMPL8wBuTGsMnR'
-            )
             const message = {contractId: contractId, rawDataHash: rawDataHash}
             // Sign - s2 (should fail, not your turn)
             const s2Signature = await s2._signTypedData(
