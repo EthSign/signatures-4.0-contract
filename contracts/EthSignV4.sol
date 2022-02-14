@@ -100,7 +100,6 @@ contract EthSignV4 is EthSignCommonFramework {
         bytes calldata signature
     ) external {
         Contract storage c = _contractMapping[contractId];
-        // slither-disable-next-line reentrancy-no-eth reentrancy-events
         require(
             SignatureCheckerUpgradeable.isValidSignatureNow(
                 _msgSender(),
@@ -126,7 +125,6 @@ contract EthSignV4 is EthSignCommonFramework {
             step == 1 || c.signersLeftPerStep[step - 2] == 0,
             "Not your turn"
         );
-        // slither-disable-next-line timestamp
         require(c.expiry == 0 || c.expiry > block.timestamp, "Expired");
         c.packedSignersAndStatus[index] |= 0x1;
         c.signersLeftPerStep[step - 1] -= 1;
