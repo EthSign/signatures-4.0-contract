@@ -83,11 +83,6 @@ contract EthSignV4 is EthSignCommonFramework {
         require(signers.length == signersData.length, "Arrays mismatch 0");
         emit ContractCreated(contractId, name, _msgSender());
         emit RecipientsAdded(contractId, signers, reviewers);
-        uint256 totalSigners = 0;
-        for (uint256 j = 0; j < signersPerStep.length; ++j) {
-            totalSigners += signersPerStep[j];
-        }
-        require(totalSigners == signers.length, "Arrays mismatch 1");
         c.expiry = expiry_;
         c.rawDataHash = rawDataHash_;
         c.signersLeftPerStep = signersPerStep;
