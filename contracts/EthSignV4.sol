@@ -122,16 +122,16 @@ contract EthSignV4 is EthSignCommonFramework {
             "Already signed"
         );
         require(
-            step == 1 || c.signersLeftPerStep[step - 2] == 0,
+            step == 0 || c.signersLeftPerStep[step - 1] == 0,
             "Not your turn"
         );
         require(c.expiry == 0 || c.expiry > block.timestamp, "Expired");
         c.packedSignersAndStatus[index] |= 0x1;
-        c.signersLeftPerStep[step - 1] -= 1;
+        c.signersLeftPerStep[step] -= 1;
         emit SignerSigned(contractId, _msgSender());
         if (
-            c.signersLeftPerStep[step - 1] == 0 &&
-            step == c.signersLeftPerStep.length
+            c.signersLeftPerStep[step] == 0 &&
+            step == c.signersLeftPerStep.length - 1
         ) emit ContractSigningCompleted(contractId);
     }
 

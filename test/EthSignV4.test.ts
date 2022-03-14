@@ -86,7 +86,7 @@ describe('EthSignV4', () => {
     describe('create and sign workflow', () => {
         const name = 'Some contract'
         const rawDataHash = ethers.utils.hashMessage('some data')
-        const signerStep = [1, 1, 2]
+        const signerStep = [0, 0, 1]
         const signersPerStep = [2, 1]
         const signersData: ethers.BigNumber[] = []
 
@@ -101,7 +101,7 @@ describe('EthSignV4', () => {
             }
         })
 
-        it('w/ strict mode, w/ no expiry', async () => {
+        it('w/ no expiry', async () => {
             const contractId = await contract
                 .connect(s0)
                 .callStatic.create(
