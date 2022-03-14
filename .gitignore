@@ -82,3 +82,6 @@ doc/
 
 # OZ Cache (UUPS proxy deployment addresses)
 .openzeppelin
+
+.secret
+build

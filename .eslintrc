@@ -2,17 +2,16 @@
   "ignorePatterns": [
     "dist",
     "node_modules",
-    "typechain"
+    "typechain",
+    "truffle-config.js",
+    "migrations"
   ],
   "root": true,
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "project": ["./tsconfig.json"]
   },
-  "plugins": [
-    "@typescript-eslint",
-    "prettier"
-  ],
+  "plugins": ["@typescript-eslint", "prettier"],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
@@ -32,8 +31,8 @@
 
     "arrow-body-style": ["error", "as-needed"],
     "block-scoped-var": "error",
-    "camelcase": ["error",{ "properties": "always" }],
-    "curly": ["error","all"],
+    "camelcase": ["error", { "properties": "always" }],
+    "curly": ["error", "all"],
     "default-case": "error",
     "default-case-last": "error",
     "default-param-last": "error",
@@ -72,7 +71,7 @@
     "prefer-arrow-callback": "error",
     "prefer-const": "error",
     "spaced-comment": "error",
-    "strict" : "error",
+    "strict": "error",
 
     "arrow-spacing": "error",
     "comma-spacing": ["error", { "before": false, "after": true }],
