@@ -39,7 +39,7 @@ contract EthSignV4 is EthSignCommonFramework {
     event RecipientsAdded(
         bytes32 contractId,
         address[] signers,
-        address[] reviewers
+        address[] viewers
     );
     event SignerSigned(bytes32 contractId, address signer);
     event ContractSigningCompleted(bytes32 contractId);
@@ -71,10 +71,17 @@ contract EthSignV4 is EthSignCommonFramework {
         uint8[] calldata signersPerStep,
         address[] calldata signers,
         uint168[] calldata signersData,
-        address[] calldata reviewers
+        address[] calldata viewers
     ) external returns (bytes32 contractId) {
         contractId = keccak256(
-            abi.encode(chainId, expiry_, signersPerStep, signersData)
+            abi.encode(
+                chainId,
+                name,
+                expiry_,
+                rawDataHash_,
+                signersPerStep,
+                signersData
+            )
         );
         Contract storage c = _contractMapping[contractId];
         require(c.rawDataHash == 0, "Contract exists");
@@ -82,7 +89,7 @@ contract EthSignV4 is EthSignCommonFramework {
         require(expiry_ > block.timestamp || expiry_ == 0, "Invalid expiry");
         require(signers.length == signersData.length, "Arrays mismatch 0");
         emit ContractCreated(contractId, name, _msgSender());
-        emit RecipientsAdded(contractId, signers, reviewers);
+        emit RecipientsAdded(contractId, signers, viewers);
         c.expiry = expiry_;
         c.rawDataHash = rawDataHash_;
         c.signersLeftPerStep = signersPerStep;
