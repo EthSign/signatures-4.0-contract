@@ -13,7 +13,7 @@ contract EthSignCommonFramework is
     uint256 public chainId;
 
     function initialize(uint256 chainId_, address forwarder)
-        external
+        public
         virtual
         initializer
     {
