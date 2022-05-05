@@ -22,6 +22,7 @@ module.exports = {
       confirmations: 2,
       skipDryRun: true,
       trustedForwarder: "0x86C80a8aa58e0A4fa09A69624c31Ab2a6CAD56b8",
+      gasPrice: 45000000000,
     },
   },
 

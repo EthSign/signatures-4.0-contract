@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerU
 contract EthSignV4 is EthSignCommonFramework {
     struct Contract {
         uint32 expiry;
-        bytes32 rawDataHash;
+        string rawDataHash;
         uint8[] signersLeftPerStep;
         uint168[] packedSignersAndStatus;
     }
@@ -24,12 +24,13 @@ contract EthSignV4 is EthSignCommonFramework {
      */
     uint8 public constant STEP_BITMASK = 0xFE;
     uint8 public constant STATUS_BITMASK = 0x1;
-    bytes32 private constant _SALT =
-        0xad27b301e5f37100ff157cc76d31929cff6e67812684f9f8bc3d7f70865dd810; // keccak256("EthSignV4");
+    bytes32 private constant _SALT = keccak256("EthSignV4");
     bytes32 private constant _EIP712_DOMAIN_TYPE_HASH =
-        0xd87cd6ef79d4e2b95e15ce8abf732db51ec771f1ca2edccf22a46c729ac56472; // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)");
+        keccak256(
+            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)"
+        );
     bytes32 private constant _STRUCT_TYPE_HASH =
-        0x14bd91134e3467a07c38fd0cbaa1e572cbf6bab435886649b8818f6754865054; // keccak256("Contract(bytes32 contractId,bytes32 rawDataHash)");
+        keccak256("Contract(bytes32 contractId,string rawDataHash)");
     // solhint-disable var-name-mixedcase
     bytes32 private _DOMAIN_SEPARATOR;
 
@@ -38,7 +39,7 @@ contract EthSignV4 is EthSignCommonFramework {
     event ContractCreated(bytes32 contractId, string name, address initiator);
     event RecipientsAdded(
         bytes32 contractId,
-        address[] signers,
+        uint168[] signersData,
         address[] viewers
     );
     event SignerSigned(bytes32 contractId, address signer);
@@ -54,8 +55,8 @@ contract EthSignV4 is EthSignCommonFramework {
         _DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 _EIP712_DOMAIN_TYPE_HASH,
-                0x60570743c3aa81622759289f024257add09e8c4aa0cf1732651de4dd5231d716, // keccak256("EthSign")
-                0x13600b294191fc92924bb3ce4b969c1e7e2bab8f4c93c3fc6d0a51733df3c060, // keccak256("4")
+                keccak256("EthSign"),
+                keccak256("4"),
                 chainId,
                 this,
                 _SALT
@@ -67,9 +68,8 @@ contract EthSignV4 is EthSignCommonFramework {
     function create(
         string calldata name,
         uint32 expiry_,
-        bytes32 rawDataHash_,
+        string calldata rawDataHash_,
         uint8[] calldata signersPerStep,
-        address[] calldata signers,
         uint168[] calldata signersData,
         address[] calldata viewers
     ) external returns (bytes32 contractId) {
@@ -84,12 +84,11 @@ contract EthSignV4 is EthSignCommonFramework {
             )
         );
         Contract storage c = _contractMapping[contractId];
-        require(c.rawDataHash == 0, "Contract exists");
+        require(c.packedSignersAndStatus.length == 0, "Contract exists");
         // slither-disable-next-line timestamp
         require(expiry_ > block.timestamp || expiry_ == 0, "Invalid expiry");
-        require(signers.length == signersData.length, "Arrays mismatch 0");
         emit ContractCreated(contractId, name, _msgSender());
-        emit RecipientsAdded(contractId, signers, viewers);
+        emit RecipientsAdded(contractId, signersData, viewers);
         c.expiry = expiry_;
         c.rawDataHash = rawDataHash_;
         c.signersLeftPerStep = signersPerStep;
@@ -174,12 +173,18 @@ contract EthSignV4 is EthSignCommonFramework {
         hasSigned = uint8(signerData & STATUS_BITMASK);
     }
 
-    function _hashSign(bytes32 contractId, bytes32 rawDataHash)
+    function _hashSign(bytes32 contractId, string memory rawDataHash)
         internal
         pure
         returns (bytes32)
     {
         return
-            keccak256(abi.encode(_STRUCT_TYPE_HASH, contractId, rawDataHash));
+            keccak256(
+                abi.encode(
+                    _STRUCT_TYPE_HASH,
+                    contractId,
+                    keccak256(bytes(rawDataHash))
+                )
+            );
     }
 }
