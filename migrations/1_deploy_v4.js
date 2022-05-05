@@ -7,6 +7,7 @@ module.exports = async function (deployer, network) {
     const existing = await EthSignV4.deployed();
     await upgradeProxy(existing.address, EthSignV4, { deployer });
   } catch (error) {
+    console.log(`Error upgrading, redeploying instead...`);
     await deployProxy(
       EthSignV4,
       [
