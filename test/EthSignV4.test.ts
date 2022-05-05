@@ -31,7 +31,7 @@ const EIP712_CONSTANTS = {
     STRUCT_TYPES: {
         Contract: [
             {name: 'contractId', type: 'bytes32'},
-            {name: 'rawDataHash', type: 'bytes32'}
+            {name: 'rawDataHash', type: 'string'}
         ]
     }
 }
@@ -85,7 +85,7 @@ describe('EthSignV4', () => {
 
     describe('create and sign workflow', () => {
         const name = 'Some contract'
-        const rawDataHash = ethers.utils.hashMessage('some data')
+        const rawDataHash = 'B-FQ-2VdD0rnIEc1GKKbUItHqFM_minWxL5yMe0EpqA'
         const signerStep = [0, 0, 1]
         const signersPerStep = [2, 1]
         const signersData: ethers.BigNumber[] = []
@@ -109,26 +109,17 @@ describe('EthSignV4', () => {
                     0,
                     rawDataHash,
                     signersPerStep,
-                    signerAddresses,
                     signersData,
                     []
                 )
             // Create
             const createTx = await contract
                 .connect(s0)
-                .create(
-                    name,
-                    0,
-                    rawDataHash,
-                    signersPerStep,
-                    signerAddresses,
-                    signersData,
-                    []
-                )
+                .create(name, 0, rawDataHash, signersPerStep, signersData, [])
             await successfulResolvedTransaction(createTx)
             void expect(createTx)
                 .to.emit(contract, 'RecipientsAdded')
-                .withArgs(contractId, signerAddresses, [])
+                .withArgs(contractId, signersData, [])
             // Verify struct
             let contractStruct = await contract.getContract(contractId)
             expect(contractStruct.expiry).equals(0)
@@ -207,7 +198,6 @@ describe('EthSignV4', () => {
                     0,
                     rawDataHash,
                     signersPerStep,
-                    signerAddresses,
                     signersData,
                     []
                 )
@@ -219,7 +209,6 @@ describe('EthSignV4', () => {
                         1,
                         rawDataHash,
                         signersPerStep,
-                        signerAddresses,
                         signersData,
                         []
                     )
@@ -232,7 +221,6 @@ describe('EthSignV4', () => {
                         0,
                         rawDataHash,
                         signersPerStep,
-                        signerAddresses,
                         signersData,
                         []
                     )
@@ -245,7 +233,6 @@ describe('EthSignV4', () => {
                         0,
                         rawDataHash,
                         signersPerStep,
-                        signerAddresses,
                         signersData,
                         []
                     )
