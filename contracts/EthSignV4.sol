@@ -179,6 +179,12 @@ contract EthSignV4 is EthSignCommonFramework {
         returns (bytes32)
     {
         return
-            keccak256(abi.encode(_STRUCT_TYPE_HASH, contractId, rawDataHash));
+            keccak256(
+                abi.encode(
+                    _STRUCT_TYPE_HASH,
+                    contractId,
+                    keccak256(bytes(rawDataHash))
+                )
+            );
     }
 }
