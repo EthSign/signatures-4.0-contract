@@ -30,7 +30,9 @@ contract EthSignV4 is EthSignCommonFramework {
             "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)"
         );
     bytes32 private constant _STRUCT_TYPE_HASH =
-        keccak256("Contract(bytes32 contractId,string rawDataHash)");
+        keccak256(
+            "Contract(bytes32 contractId,string rawDataHash,string rawSignatureDataHash)"
+        );
     // solhint-disable var-name-mixedcase
     bytes32 private _DOMAIN_SEPARATOR;
 
@@ -42,7 +44,11 @@ contract EthSignV4 is EthSignCommonFramework {
         uint168[] signersData,
         address[] viewers
     );
-    event SignerSigned(bytes32 contractId, address signer);
+    event SignerSigned(
+        bytes32 contractId,
+        address signer,
+        string rawSignatureDataHash
+    );
     event ContractSigningCompleted(bytes32 contractId);
     event ContractHidden(bytes32 contractId, address party);
 
@@ -98,7 +104,8 @@ contract EthSignV4 is EthSignCommonFramework {
     function sign(
         bytes32 contractId,
         uint256 index,
-        bytes calldata signature
+        bytes calldata signature,
+        string calldata rawSignatureDataHash
     ) external {
         Contract storage c = _contractMapping[contractId];
         require(
@@ -106,7 +113,7 @@ contract EthSignV4 is EthSignCommonFramework {
                 _msgSender(),
                 ECDSAUpgradeable.toTypedDataHash(
                     _DOMAIN_SEPARATOR,
-                    _hashSign(contractId, c.rawDataHash)
+                    _hashSign(contractId, c.rawDataHash, rawSignatureDataHash)
                 ),
                 signature
             ),
@@ -129,7 +136,7 @@ contract EthSignV4 is EthSignCommonFramework {
         require(c.expiry == 0 || c.expiry > block.timestamp, "Expired");
         c.packedSignersAndStatus[index] |= 0x1;
         c.signersLeftPerStep[step] -= 1;
-        emit SignerSigned(contractId, _msgSender());
+        emit SignerSigned(contractId, _msgSender(), rawSignatureDataHash);
         if (
             c.signersLeftPerStep[step] == 0 &&
             step == c.signersLeftPerStep.length - 1
@@ -173,17 +180,18 @@ contract EthSignV4 is EthSignCommonFramework {
         hasSigned = uint8(signerData & STATUS_BITMASK);
     }
 
-    function _hashSign(bytes32 contractId, string memory rawDataHash)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function _hashSign(
+        bytes32 contractId,
+        string memory rawDataHash,
+        string memory rawSignatureDataHash
+    ) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
                     _STRUCT_TYPE_HASH,
                     contractId,
-                    keccak256(bytes(rawDataHash))
+                    keccak256(bytes(rawDataHash)),
+                    keccak256(bytes(rawSignatureDataHash))
                 )
             );
     }
