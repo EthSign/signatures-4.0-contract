@@ -55,7 +55,7 @@
     "hardhat": "^2.6.8",
     "husky": "^7.0.2",
     "lint-staged": "^12.1.5",
-    "mocha": "^9.1.2",
+    "mocha": "^10.0.0",
     "node-plantuml": "windranger-io/node-plantuml#fcfc730",
     "prettier": "^2.5.1",
     "prettier-plugin-solidity": "^1.0.0-beta.18",
