@@ -31,7 +31,8 @@ const EIP712_CONSTANTS = {
     STRUCT_TYPES: {
         Contract: [
             {name: 'contractId', type: 'bytes32'},
-            {name: 'rawDataHash', type: 'string'}
+            {name: 'rawDataHash', type: 'string'},
+            {name: 'rawSignatureDataHash', type: 'string'}
         ]
     }
 }
@@ -86,6 +87,8 @@ describe('EthSignV4', () => {
     describe('create and sign workflow', () => {
         const name = 'Some contract'
         const rawDataHash = 'B-FQ-2VdD0rnIEc1GKKbUItHqFM_minWxL5yMe0EpqA'
+        const rawSignatureDataHash =
+            'j0tGkI-YX1exx8W1b3Ba3wysQB4rZpSTRBLqfVeqNJ'
         const signerStep = [0, 0, 1]
         const signersPerStep = [2, 1]
         const signersData: ethers.BigNumber[] = []
@@ -138,7 +141,11 @@ describe('EthSignV4', () => {
                 })
             )
             // Sign - s0
-            const message = {contractId: contractId, rawDataHash: rawDataHash}
+            const message = {
+                contractId: contractId,
+                rawDataHash: rawDataHash,
+                rawSignatureDataHash: rawSignatureDataHash
+            }
             const s0Signature = await s0._signTypedData(
                 EIP712_CONSTANTS.DOMAIN_DATA,
                 EIP712_CONSTANTS.STRUCT_TYPES,
@@ -146,11 +153,11 @@ describe('EthSignV4', () => {
             )
             const s0SignTx = await contract
                 .connect(s0)
-                .sign(contractId, 0, s0Signature)
+                .sign(contractId, 0, s0Signature, rawSignatureDataHash)
             await successfulResolvedTransaction(s0SignTx)
             void expect(s0SignTx)
                 .to.emit(contract, 'SignerSigned')
-                .withArgs(contractId, s0.address)
+                .withArgs(contractId, s0.address, rawSignatureDataHash)
             contractStruct = await contract.getContract(contractId)
             expect(contractStruct.expiry).equals(0)
             expect(contractStruct.rawDataHash).equals(rawDataHash)
@@ -163,11 +170,11 @@ describe('EthSignV4', () => {
             )
             const s1SignTx = await contract
                 .connect(s1)
-                .sign(contractId, 1, s1Signature)
+                .sign(contractId, 1, s1Signature, rawSignatureDataHash)
             await successfulResolvedTransaction(s1SignTx)
             void expect(s1SignTx)
                 .to.emit(contract, 'SignerSigned')
-                .withArgs(contractId, s1.address)
+                .withArgs(contractId, s1.address, rawSignatureDataHash)
             contractStruct = await contract.getContract(contractId)
             expect(contractStruct.signersLeftPerStep).to.deep.equal([0, 1])
             // Sign - s2
@@ -178,11 +185,11 @@ describe('EthSignV4', () => {
             )
             const s2SignTx = await contract
                 .connect(s2)
-                .sign(contractId, 2, s2Signature)
+                .sign(contractId, 2, s2Signature, rawSignatureDataHash)
             await successfulResolvedTransaction(s2SignTx)
             void expect(s2SignTx)
                 .to.emit(contract, 'SignerSigned')
-                .withArgs(contractId, s2.address)
+                .withArgs(contractId, s2.address, rawSignatureDataHash)
             void expect(s2SignTx)
                 .to.emit(contract, 'ContractSigningCompleted')
                 .withArgs(contractId)
@@ -237,7 +244,11 @@ describe('EthSignV4', () => {
                         []
                     )
             ).to.be.revertedWith('Contract exists')
-            const message = {contractId: contractId, rawDataHash: rawDataHash}
+            const message = {
+                contractId: contractId,
+                rawDataHash: rawDataHash,
+                rawSignatureDataHash: rawSignatureDataHash
+            }
             // Sign - s2 (should fail, not your turn)
             const s2Signature = await s2._signTypedData(
                 EIP712_CONSTANTS.DOMAIN_DATA,
@@ -245,7 +256,9 @@ describe('EthSignV4', () => {
                 message
             )
             await expect(
-                contract.connect(s2).sign(contractId, 2, s2Signature)
+                contract
+                    .connect(s2)
+                    .sign(contractId, 2, s2Signature, rawSignatureDataHash)
             ).to.be.revertedWith('Not your turn')
             // Sign - s0
             const s0Signature = await s0._signTypedData(
@@ -254,16 +267,24 @@ describe('EthSignV4', () => {
                 message
             )
             await expect(
-                contract.connect(s0).sign(contractId, 1, s0Signature)
+                contract
+                    .connect(s0)
+                    .sign(contractId, 1, s0Signature, rawSignatureDataHash)
             ).to.be.revertedWith('Signer mismatch')
             await expect(
-                contract.connect(s0).sign(contractId, 0, s2Signature)
+                contract
+                    .connect(s0)
+                    .sign(contractId, 0, s2Signature, rawSignatureDataHash)
             ).to.be.revertedWith('Invalid signature')
             await successfulTransaction(
-                contract.connect(s0).sign(contractId, 0, s0Signature)
+                contract
+                    .connect(s0)
+                    .sign(contractId, 0, s0Signature, rawSignatureDataHash)
             )
             await expect(
-                contract.connect(s0).sign(contractId, 0, s0Signature)
+                contract
+                    .connect(s0)
+                    .sign(contractId, 0, s0Signature, rawSignatureDataHash)
             ).to.be.revertedWith('Already signed')
         })
     })
