@@ -19,6 +19,7 @@ import {ethers} from 'ethers'
 chai.use(solidity)
 
 const chainId = hre.network.config.chainId ?? 1337
+const metadata = 0
 
 const EIP712_CONSTANTS = {
     DOMAIN_DATA: {
@@ -113,12 +114,21 @@ describe('EthSignV4', () => {
                     rawDataHash,
                     signersPerStep,
                     signersData,
-                    []
+                    [],
+                    metadata
                 )
             // Create
             const createTx = await contract
                 .connect(s0)
-                .create(name, 0, rawDataHash, signersPerStep, signersData, [])
+                .create(
+                    name,
+                    0,
+                    rawDataHash,
+                    signersPerStep,
+                    signersData,
+                    [],
+                    metadata
+                )
             await successfulResolvedTransaction(createTx)
             void expect(createTx)
                 .to.emit(contract, 'RecipientsAdded')
@@ -206,7 +216,8 @@ describe('EthSignV4', () => {
                     rawDataHash,
                     signersPerStep,
                     signersData,
-                    []
+                    [],
+                    metadata
                 )
             await expect(
                 contract
@@ -217,7 +228,8 @@ describe('EthSignV4', () => {
                         rawDataHash,
                         signersPerStep,
                         signersData,
-                        []
+                        [],
+                        metadata
                     )
             ).to.be.revertedWith('Invalid expiry')
             await successfulTransaction(
@@ -229,7 +241,8 @@ describe('EthSignV4', () => {
                         rawDataHash,
                         signersPerStep,
                         signersData,
-                        []
+                        [],
+                        metadata
                     )
             )
             await expect(
@@ -241,7 +254,8 @@ describe('EthSignV4', () => {
                         rawDataHash,
                         signersPerStep,
                         signersData,
-                        []
+                        [],
+                        metadata
                     )
             ).to.be.revertedWith('Contract exists')
             const message = {

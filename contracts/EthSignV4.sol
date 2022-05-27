@@ -38,7 +38,12 @@ contract EthSignV4 is EthSignCommonFramework {
 
     mapping(bytes32 => Contract) internal _contractMapping;
 
-    event ContractCreated(bytes32 contractId, string name, address initiator);
+    event ContractCreated(
+        bytes32 contractId,
+        string name,
+        address initiator,
+        uint8 metadata // 0 == no encryption, 1 == 1-tap, 2 == password AES
+    );
     event RecipientsAdded(
         bytes32 contractId,
         uint168[] signersData,
@@ -77,7 +82,8 @@ contract EthSignV4 is EthSignCommonFramework {
         string calldata rawDataHash_,
         uint8[] calldata signersPerStep,
         uint168[] calldata signersData,
-        address[] calldata viewers
+        address[] calldata viewers,
+        uint8 metadata
     ) external returns (bytes32 contractId) {
         contractId = keccak256(
             abi.encode(
@@ -93,7 +99,7 @@ contract EthSignV4 is EthSignCommonFramework {
         require(c.packedSignersAndStatus.length == 0, "Contract exists");
         // slither-disable-next-line timestamp
         require(expiry_ > block.timestamp || expiry_ == 0, "Invalid expiry");
-        emit ContractCreated(contractId, name, _msgSender());
+        emit ContractCreated(contractId, name, _msgSender(), metadata);
         emit RecipientsAdded(contractId, signersData, viewers);
         c.expiry = expiry_;
         c.rawDataHash = rawDataHash_;
