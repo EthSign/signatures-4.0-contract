@@ -120,7 +120,7 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4.1.0
         with:
           python-version: "3.x"
           architecture: "x64"
